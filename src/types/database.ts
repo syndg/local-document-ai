@@ -41,6 +41,13 @@ export interface DocumentMetadata {
   tags?: string[];
   /** Custom properties */
   customProperties?: Record<string, any>;
+  /** Cryptographic materials for encrypted documents */
+  crypto?: {
+    /** Initialization Vector stored as Base64 string */
+    iv: string;
+    /** Salt for key derivation stored as Base64 string */
+    salt: string;
+  };
 }
 
 /**

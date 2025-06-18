@@ -18,10 +18,30 @@ const DB_VERSION = 1;
  * This service handles all CRUD operations for documents, processing results, templates, and audit logs
  */
 class DatabaseService {
-  private dbPromise: Promise<IDBPDatabase<DocProcessingSuiteDB>>;
+  private dbPromise: Promise<IDBPDatabase<DocProcessingSuiteDB>> | null = null;
 
   constructor() {
-    this.dbPromise = this.initializeDatabase();
+    // Only initialize on client side
+    if (typeof window !== "undefined") {
+      this.dbPromise = this.initializeDatabase();
+    }
+  }
+
+  /**
+   * Ensure database is initialized before use
+   */
+  private async ensureInitialized(): Promise<
+    IDBPDatabase<DocProcessingSuiteDB>
+  > {
+    if (typeof window === "undefined") {
+      throw new Error("DatabaseService can only be used on the client side");
+    }
+
+    if (!this.dbPromise) {
+      this.dbPromise = this.initializeDatabase();
+    }
+
+    return this.dbPromise;
   }
 
   /**
@@ -97,7 +117,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<string>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       await db.add("documents", doc);
 
       // Log the action
@@ -142,7 +162,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<Document>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       const document = await db.get("documents", id);
 
       return {
@@ -176,7 +196,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<string>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       doc.modified = new Date();
       await db.put("documents", doc);
 
@@ -222,7 +242,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<boolean>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
 
       // Get document details before deletion for audit log
       const doc = await db.get("documents", id);
@@ -273,7 +293,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<Document[]>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       let documents: Document[];
 
       if (options?.useIndex) {
@@ -347,7 +367,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<Document[]>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       const index = db
         .transaction("documents")
         .objectStore("documents")
@@ -397,7 +417,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<string>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       await db.add("processedResults", result);
 
       // Log the action
@@ -449,7 +469,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<ProcessingResult[]>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       const index = db
         .transaction("processedResults")
         .objectStore("processedResults")
@@ -499,7 +519,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<string>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       await db.add("templates", template);
 
       // Log the action
@@ -548,7 +568,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<DocumentTemplate[]>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
 
       // Get all templates and filter client-side due to boolean indexing issues
       const allTemplates = await db.getAll("templates");
@@ -601,7 +621,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<number>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       const id = await db.add("auditLogs", log as AuditLog);
 
       return {
@@ -635,7 +655,7 @@ class DatabaseService {
   ): Promise<DatabaseOperationResult<AuditLog[]>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
       let logs: AuditLog[];
 
       if (options?.useIndex) {
@@ -698,7 +718,7 @@ class DatabaseService {
   > {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
 
       const documentCount = await db.count("documents");
       const processingResultCount = await db.count("processedResults");
@@ -747,7 +767,7 @@ class DatabaseService {
   public async clearAllData(): Promise<DatabaseOperationResult<boolean>> {
     const startTime = Date.now();
     try {
-      const db = await this.dbPromise;
+      const db = await this.ensureInitialized();
 
       await db.clear("documents");
       await db.clear("processedResults");
@@ -780,13 +800,29 @@ class DatabaseService {
    * @returns Promise that resolves when the database is closed
    */
   public async close(): Promise<void> {
-    const db = await this.dbPromise;
+    const db = await this.ensureInitialized();
     db.close();
   }
 }
 
-// Export a singleton instance of the service
-export const dbService = new DatabaseService();
+// Create a function to get the database service instance safely
+let dbServiceInstance: DatabaseService | null = null;
+
+export const getDbService = (): DatabaseService => {
+  if (typeof window === "undefined") {
+    throw new Error("Database service can only be used on the client side");
+  }
+
+  if (!dbServiceInstance) {
+    dbServiceInstance = new DatabaseService();
+  }
+
+  return dbServiceInstance;
+};
+
+// For compatibility, export dbService but with proper client-side check
+export const dbService =
+  typeof window !== "undefined" ? getDbService() : (null as any);
 
 // Export the class for testing purposes
 export { DatabaseService };
