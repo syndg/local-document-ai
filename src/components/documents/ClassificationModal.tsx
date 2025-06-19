@@ -17,6 +17,7 @@ import {
   ClassificationResult,
 } from "@/services/classification/classification";
 import { Document } from "@/types/database";
+import { renderPdfPageToImage, isPdfFile } from "@/lib/pdf-utils";
 
 interface ClassificationModalProps {
   /** Whether the modal is open */
@@ -96,8 +97,21 @@ export function ClassificationModal({
       // Add a small delay to ensure progress bar is visible
       await new Promise((resolve) => setTimeout(resolve, 500));
 
+      // Determine the image data for classification
+      let imageForClassification: Blob | ArrayBuffer;
+
+      if (isPdfFile(document.type)) {
+        console.log("Processing PDF document - rendering first page to image");
+        // Render the first page of the PDF to an image Blob
+        imageForClassification = await renderPdfPageToImage(documentData);
+      } else {
+        console.log("Processing image document");
+        // It's already an image
+        imageForClassification = documentData;
+      }
+
       const classificationResult = await classificationService.classify(
-        documentData
+        imageForClassification
       );
       // console.log("Classification completed:", classificationResult);
 

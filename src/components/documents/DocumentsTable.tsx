@@ -413,7 +413,7 @@ export function DocumentsTable({ documents, onRefresh }: DocumentsTableProps) {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the
-              document "{docToDelete?.name}".
+              document &ldquo;{docToDelete?.name}&rdquo;.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -503,20 +503,21 @@ export function DocumentsTable({ documents, onRefresh }: DocumentsTableProps) {
                       <span>Download</span>
                     </DropdownMenuItem>
                     {document.type.startsWith("image/") && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() => handleOCRProcess(document)}
-                        >
-                          <Cpu className="mr-2 h-4 w-4" />
-                          <span>Extract Text</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleClassification(document)}
-                        >
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          <span>Classify Document</span>
-                        </DropdownMenuItem>
-                      </>
+                      <DropdownMenuItem
+                        onClick={() => handleOCRProcess(document)}
+                      >
+                        <Cpu className="mr-2 h-4 w-4" />
+                        <span>Extract Text</span>
+                      </DropdownMenuItem>
+                    )}
+                    {(document.type.startsWith("image/") ||
+                      document.type === "application/pdf") && (
+                      <DropdownMenuItem
+                        onClick={() => handleClassification(document)}
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        <span>Classify Document</span>
+                      </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem

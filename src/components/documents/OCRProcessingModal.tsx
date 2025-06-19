@@ -104,12 +104,11 @@ export function OCRProcessingModal({
 
       // Process the image with OCR
       const ocrService = getOCRService();
-      const ocrResult = await ocrService.recognize(
-        blob,
-        (progressValue: number) => {
-          setProgress(progressValue);
-        }
-      );
+      const ocrResult = await ocrService.recognize(blob, (progressValue) => {
+        setProgress(progressValue);
+      });
+
+      console.log(ocrResult);
 
       setResult(ocrResult);
       console.log(

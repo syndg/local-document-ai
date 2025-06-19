@@ -8,17 +8,7 @@ export interface OCRResult {
   text: string;
   /** Confidence score (0-100) */
   confidence: number;
-  /** Detailed word-level information */
-  words: Array<{
-    text: string;
-    confidence: number;
-    bbox: {
-      x0: number;
-      y0: number;
-      x1: number;
-      y1: number;
-    };
-  }>;
+
   /** Processing time in milliseconds */
   processingTime: number;
 }
@@ -189,24 +179,11 @@ export class OCRService {
 
         const processingTime = Date.now() - startTime;
 
-        console.log(
-          `OCR Service: Text recognition completed in ${processingTime}ms`
-        );
-        console.log(
-          `OCR Service: Extracted ${result.data.text.length} characters with ${result.data.confidence}% confidence`
-        );
-
         // Transform the result into our standard format
-        const data = result.data as any; // Type assertion for Tesseract.js response
+        const data = result.data; // Type assertion for Tesseract.js response
         return {
           text: data.text,
           confidence: data.confidence,
-          words:
-            data.words?.map((word: any) => ({
-              text: word.text,
-              confidence: word.confidence,
-              bbox: word.bbox,
-            })) || [],
           processingTime,
         };
       } catch (ocrError) {
