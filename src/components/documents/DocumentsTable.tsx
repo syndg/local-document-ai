@@ -37,9 +37,11 @@ import {
   Eye,
   MoreHorizontal,
   Cpu,
+  Sparkles,
 } from "lucide-react";
 import { securityService, SecurityService } from "@/services/security/security";
 import { OCRProcessingModal } from "./OCRProcessingModal";
+import { ClassificationModal } from "./ClassificationModal";
 import type { Document } from "@/types/database";
 
 interface DocumentsTableProps {
@@ -62,6 +64,11 @@ export function DocumentsTable({ documents, onRefresh }: DocumentsTableProps) {
   const [ocrDocumentData, setOcrDocumentData] = useState<ArrayBuffer | null>(
     null
   );
+  const [classificationModalOpen, setClassificationModalOpen] = useState(false);
+  const [classificationDocument, setClassificationDocument] =
+    useState<Document | null>(null);
+  const [classificationDocumentData, setClassificationDocumentData] =
+    useState<ArrayBuffer | null>(null);
 
   /**
    * Get the appropriate icon for a document based on its MIME type
@@ -285,6 +292,64 @@ export function DocumentsTable({ documents, onRefresh }: DocumentsTableProps) {
   };
 
   /**
+   * Handle document classification
+   * @param document - Document to classify
+   */
+  const handleClassification = async (document: Document) => {
+    try {
+      // TODO: Replace with password from authenticated user session
+      const tempPassword = "super-secret-password-for-now";
+
+      let documentData: ArrayBuffer;
+
+      // Check if the document has crypto metadata (encrypted)
+      if (document.metadata.crypto) {
+        // Decrypt the document data
+        const salt = SecurityService.base64ToArray(
+          document.metadata.crypto.salt
+        );
+        const iv = SecurityService.base64ToArray(document.metadata.crypto.iv);
+
+        documentData = await securityService.decrypt(
+          document.encryptedData,
+          tempPassword,
+          salt,
+          iv
+        );
+      } else {
+        // Legacy document (not encrypted)
+        documentData = document.encryptedData;
+      }
+
+      // Set the document and data for the classification modal
+      setClassificationDocument(document);
+      setClassificationDocumentData(documentData);
+      setClassificationModalOpen(true);
+    } catch (error) {
+      console.error("Failed to prepare document for classification:", error);
+      if (
+        error instanceof Error &&
+        error.message.includes("Invalid password")
+      ) {
+        alert("Failed to decrypt document. Please check your password.");
+      } else {
+        alert(
+          "Failed to prepare document for classification. Please try again."
+        );
+      }
+    }
+  };
+
+  /**
+   * Handle closing the classification modal
+   */
+  const handleClassificationModalClose = () => {
+    setClassificationModalOpen(false);
+    setClassificationDocument(null);
+    setClassificationDocumentData(null);
+  };
+
+  /**
    * Handle document download
    * @param document - Document to download
    */
@@ -371,6 +436,15 @@ export function DocumentsTable({ documents, onRefresh }: DocumentsTableProps) {
         documentData={ocrDocumentData}
       />
 
+      {classificationDocument && classificationDocumentData && (
+        <ClassificationModal
+          isOpen={classificationModalOpen}
+          onClose={handleClassificationModalClose}
+          document={classificationDocument}
+          documentData={classificationDocumentData}
+        />
+      )}
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -429,12 +503,20 @@ export function DocumentsTable({ documents, onRefresh }: DocumentsTableProps) {
                       <span>Download</span>
                     </DropdownMenuItem>
                     {document.type.startsWith("image/") && (
-                      <DropdownMenuItem
-                        onClick={() => handleOCRProcess(document)}
-                      >
-                        <Cpu className="mr-2 h-4 w-4" />
-                        <span>Extract Text</span>
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => handleOCRProcess(document)}
+                        >
+                          <Cpu className="mr-2 h-4 w-4" />
+                          <span>Extract Text</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleClassification(document)}
+                        >
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          <span>Classify Document</span>
+                        </DropdownMenuItem>
+                      </>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
